@@ -10,6 +10,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useGameState } from '../../src/hooks/useGameState';
 import { GameService } from '../../src/services/GameService';
 import { GameBoard } from '../../src/components/GameBoard';
+import { ExchangePhase } from '../../src/components/ExchangePhase';
 import { colors } from '../../src/theme/colors';
 import { isValidMeld, canAddToMeld } from '../../src/game/GameRules';
 import { Card } from '../../src/game/CardUtils';
@@ -37,6 +38,7 @@ export default function GameScreen() {
       }
     }
   }, [gameState?.currentPlayerIndex, playerId]);
+
 
   if (loading || !gameState) {
     return (
@@ -142,6 +144,29 @@ export default function GameScreen() {
       Alert.alert('Error', error.message || 'Failed to add card to meld');
     }
   };
+
+  const handleSelectExchangeCard = async (cardId: string) => {
+    if (!gameId || !playerId) return;
+
+    try {
+      await GameService.selectExchangeCard(gameId, playerId, cardId);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to select exchange card');
+    }
+  };
+
+  // Show exchange phase if game is in exchanging status
+  if (gameState.status === 'exchanging') {
+    return (
+      <View style={styles.container}>
+        <ExchangePhase
+          gameState={gameState}
+          currentPlayerId={playerId!}
+          onSelectCard={handleSelectExchangeCard}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

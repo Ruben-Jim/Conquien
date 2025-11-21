@@ -10,6 +10,7 @@ export interface Player {
   position: number; // 0-3 for 4 players
   seat: number | null; // Selected seat (0-3) or null if not seated
   ready: boolean; // Ready status
+  isAI?: boolean; // True for AI/placeholder players
 }
 
 export interface GameState {
@@ -19,9 +20,10 @@ export interface GameState {
   drawPile: Card[];
   discardPile: Card[];
   melds: Meld[];
-  status: 'waiting' | 'playing' | 'finished';
+  status: 'waiting' | 'exchanging' | 'playing' | 'finished';
   winnerId: string | null;
   createdAt: number;
+  exchangeCards?: Record<string, string>; // playerId -> cardId they selected to exchange
 }
 
 const CARDS_PER_PLAYER = 8;
@@ -43,12 +45,15 @@ export class GameStateManager {
   }
 
   static addPlayer(gameState: GameState, playerId: string, playerName: string): GameState {
-    if (gameState.players.some(p => p.id === playerId)) {
+    // Ensure players array exists (Firebase might not return it)
+    const players = gameState.players || [];
+    
+    if (players.some(p => p.id === playerId)) {
       return gameState; // Player already in game
     }
 
     // First player becomes host
-    const isHost = gameState.players.length === 0;
+    const isHost = players.length === 0;
 
     const newPlayer: Player = {
       id: playerId,
@@ -62,14 +67,15 @@ export class GameStateManager {
 
     return {
       ...gameState,
-      players: [...gameState.players, newPlayer],
+      players: [...players, newPlayer],
     };
   }
 
   static removePlayer(gameState: GameState, playerId: string): GameState {
+    const players = gameState.players || [];
     return {
       ...gameState,
-      players: gameState.players.filter(p => p.id !== playerId),
+      players: players.filter(p => p.id !== playerId),
     };
   }
 
@@ -134,29 +140,33 @@ export class GameStateManager {
 
   static canStartGame(gameState: GameState): boolean {
     const seatedPlayers = gameState.players.filter(p => p.seat !== null);
-    if (seatedPlayers.length !== MAX_PLAYERS) {
+    // Require at least 2 players to start
+    if (seatedPlayers.length < 2) {
       return false;
     }
+    // All seated players must be ready
     return seatedPlayers.every(p => p.ready);
   }
 
   static startGame(gameState: GameState): GameState {
     if (!GameStateManager.canStartGame(gameState)) {
-      throw new Error('All 4 players must be seated and ready');
+      throw new Error('At least 2 players must be seated and ready');
     }
 
     if (gameState.status !== 'waiting') {
       throw new Error('Game already started');
     }
 
-    // Sort players by seat position
-    const sortedPlayers = [...gameState.players].sort((a, b) => (a.seat || 0) - (b.seat || 0));
+    // Sort players by seat position (only real players)
+    const sortedPlayers = gameState.players
+      .filter(p => p.seat !== null)
+      .sort((a, b) => (a.seat || 0) - (b.seat || 0));
 
     const deck = new Deck();
     deck.shuffle();
 
     // Deal cards to each player (sorted by seat)
-    const players = sortedPlayers.map(player => ({
+    const playersWithHands = sortedPlayers.map(player => ({
       ...player,
       hand: deck.deal(CARDS_PER_PLAYER),
     }));
@@ -166,10 +176,11 @@ export class GameStateManager {
 
     return {
       ...gameState,
-      players,
+      players: playersWithHands,
       drawPile,
-      status: 'playing',
-      currentPlayerIndex: 0, // Start with first player (counter-clockwise)
+      status: 'exchanging', // Start with exchange phase
+      currentPlayerIndex: 0,
+      exchangeCards: {}, // Track which card each player wants to exchange
     };
   }
 
@@ -400,6 +411,85 @@ export class GameStateManager {
       melds,
       winnerId,
       status,
+    };
+  }
+
+  // Select a card to exchange (cambio phase)
+  static selectExchangeCard(gameState: GameState, playerId: string, cardId: string): GameState {
+    if (gameState.status !== 'exchanging') {
+      throw new Error('Game is not in exchanging phase');
+    }
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) {
+      throw new Error('Player not found');
+    }
+
+    // Verify card is in player's hand
+    if (!player.hand.some(c => c.id === cardId)) {
+      throw new Error('Card not in hand');
+    }
+
+    const exchangeCards = { ...(gameState.exchangeCards || {}) };
+    exchangeCards[playerId] = cardId;
+
+    return {
+      ...gameState,
+      exchangeCards,
+    };
+  }
+
+  // Complete the exchange (all players pass cards clockwise)
+  static completeExchange(gameState: GameState): GameState {
+    if (gameState.status !== 'exchanging') {
+      throw new Error('Game is not in exchanging phase');
+    }
+
+    const exchangeCards = gameState.exchangeCards || {};
+    const sortedPlayers = [...gameState.players].sort((a, b) => (a.seat || 0) - (b.seat || 0));
+    
+    // Check all players have selected a card
+    if (sortedPlayers.some(p => !exchangeCards[p.id])) {
+      throw new Error('Not all players have selected a card to exchange');
+    }
+
+    // Pass cards clockwise (to the right, which is next index in sorted array)
+    // Each player passes to the player on their right
+    // We need to get cards from original hands before any modifications
+    const players = sortedPlayers.map((player, index) => {
+      const cardToGiveId = exchangeCards[player.id];
+      
+      // Remove the card being given from this player's hand
+      const newHand = player.hand.filter(c => c.id !== cardToGiveId);
+      
+      // Get the card from the player on the left (who is passing TO this player)
+      // Previous player passes their selected card to current player
+      const previousPlayerIndex = (index - 1 + sortedPlayers.length) % sortedPlayers.length;
+      const previousPlayer = sortedPlayers[previousPlayerIndex];
+      const cardToReceiveId = exchangeCards[previousPlayer.id];
+      
+      // Find the card in the previous player's original hand
+      const cardToReceive = previousPlayer.hand.find(c => c.id === cardToReceiveId);
+      
+      if (!cardToReceive) {
+        throw new Error(`Card ${cardToReceiveId} not found in previous player's hand`);
+      }
+
+      // Add the received card to the new hand
+      newHand.push(cardToReceive);
+
+      return {
+        ...player,
+        hand: newHand,
+      };
+    });
+
+    return {
+      ...gameState,
+      players,
+      status: 'playing',
+      exchangeCards: undefined,
+      currentPlayerIndex: 0, // Start with first player
     };
   }
 }

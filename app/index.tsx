@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,11 +12,32 @@ import { useRouter } from 'expo-router';
 import { GameService } from '../src/services/GameService';
 import { FirebaseService } from '../src/services/FirebaseService';
 import { colors } from '../src/theme/colors';
+import { database } from '../firebase.config';
+import { ref, get } from 'firebase/database';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [playerName, setPlayerName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [firebaseReady, setFirebaseReady] = useState(false);
+
+  // Test Firebase connection on mount
+  useEffect(() => {
+    const testFirebase = async () => {
+      try {
+        // Try to read from a simple path to test connection
+        const testRef = ref(database, '.info');
+        await get(testRef);
+        console.log('Firebase connection: OK');
+        setFirebaseReady(true);
+      } catch (error: any) {
+        console.warn('Firebase connection test failed (may still work):', error?.message);
+        // Still allow proceeding - Firebase might work even if this test fails
+        setFirebaseReady(true);
+      }
+    };
+    testFirebase();
+  }, []);
 
   const handleJoinTable = async () => {
     if (!playerName.trim()) {
@@ -26,13 +47,28 @@ export default function HomeScreen() {
 
     setLoading(true);
     try {
+      console.log('Starting join table process...');
       const playerId = FirebaseService.generatePlayerId();
+      console.log('Generated playerId:', playerId);
+      
       const gameId = await GameService.getOrCreateTable();
+      console.log('Got gameId:', gameId);
+      
       await GameService.joinGame(gameId, playerId, playerName.trim());
-      router.push(`/lobby/${gameId}?playerId=${playerId}`);
+      console.log('Joined game successfully');
+      
+      const lobbyPath = `/lobby/${gameId}?playerId=${playerId}`;
+      console.log('Navigating to lobby:', lobbyPath);
+      
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        router.replace(lobbyPath);
+      }, 100);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to join table');
-    } finally {
+      console.error('Error joining table:', error);
+      const errorMessage = error?.message || error?.toString() || 'Failed to join table';
+      console.error('Error details:', error);
+      Alert.alert('Error', errorMessage);
       setLoading(false);
     }
   };
@@ -55,8 +91,11 @@ export default function HomeScreen() {
         />
 
         <TouchableOpacity
-          style={[styles.button, styles.joinButton]}
-          onPress={handleJoinTable}
+          style={[styles.button, styles.joinButton, loading && styles.buttonDisabled]}
+          onPress={() => {
+            console.log('Button pressed!');
+            handleJoinTable();
+          }}
           disabled={loading}
         >
           {loading ? (
@@ -113,6 +152,9 @@ const styles = StyleSheet.create({
   },
   joinButton: {
     backgroundColor: colors.primary,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: colors.surface,

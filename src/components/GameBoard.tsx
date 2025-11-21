@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Card } from './Card';
 import { PlayerHand } from './PlayerHand';
 import { MeldArea } from './MeldArea';
@@ -33,9 +33,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   canDraw,
   canDiscard,
 }) => {
+  const [showDebugView, setShowDebugView] = useState(false);
   const currentPlayer = gameState.players.find(p => p.id === currentPlayerId);
   const isCurrentTurn = gameState.currentPlayerIndex === gameState.players.findIndex(p => p.id === currentPlayerId);
-  const topDiscard = gameState.discardPile[gameState.discardPile.length - 1];
+  const discardPile = gameState.discardPile || [];
+  const drawPile = gameState.drawPile || [];
+  const topDiscard = discardPile.length > 0 ? discardPile[discardPile.length - 1] : null;
 
   const handleCreateMeld = () => {
     if (selectedCards.length >= 3) {
@@ -45,24 +48,102 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Other players' melds */}
+      {/* Debug toggle button */}
+      <TouchableOpacity
+        style={styles.debugButton}
+        onPress={() => setShowDebugView(!showDebugView)}
+      >
+        <Text style={styles.debugButtonText}>
+          {showDebugView ? 'Hide' : 'Show'} All Cards
+        </Text>
+      </TouchableOpacity>
+
+      {/* Debug view - show all players' cards */}
+      {showDebugView && (
+        <View style={styles.debugContainer}>
+          <Text style={styles.debugTitle}>All Players' Cards (Debug View)</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {gameState.players.map((player) => (
+              <View key={player.id} style={styles.debugPlayerSection}>
+                <Text style={styles.debugPlayerName}>
+                  {player.name}
+                </Text>
+                <Text style={styles.debugCardCount}>
+                  {(player.hand || []).length} cards
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.debugHand}
+                >
+                  {(player.hand || []).map((card) => (
+                    <Card
+                      key={card.id}
+                      card={card}
+                      size="small"
+                      disabled={true}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Other players' info and melds */}
       {gameState.players
         .filter(p => p.id !== currentPlayerId)
         .map((player) => (
-          <MeldArea
-            key={player.id}
-            melds={gameState.melds}
-            playerId={player.id}
-            showPlayerName={true}
-            selectedCard={null}
-          />
+          <View key={player.id} style={styles.otherPlayerSection}>
+            <View style={styles.playerInfo}>
+              <Text style={styles.playerInfoText}>
+                {player.name} - {(player.hand || []).length} cards
+              </Text>
+              {gameState.currentPlayerIndex === gameState.players.findIndex(p => p.id === player.id) && (
+                <Text style={styles.currentTurnBadge}>Current Turn</Text>
+              )}
+            </View>
+            
+            {/* Show other players' cards as face-down placeholders - always hidden */}
+            {(player.hand || []).length > 0 && (
+              <View style={styles.otherPlayerHand}>
+                <Text style={styles.otherPlayerHandLabel}>
+                  Hand: {(player.hand || []).length} cards (face down)
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.otherPlayerHandContainer}
+                >
+                  {(player.hand || []).map((card, index) => (
+                    <Card
+                      key={`${player.id}-${index}`}
+                      card={card}
+                      size="small"
+                      faceDown={true}
+                      disabled={true}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            <MeldArea
+              melds={gameState.melds}
+              playerId={player.id}
+              showPlayerName={false}
+              selectedCard={null}
+              playerName={player.name}
+            />
+          </View>
         ))}
 
       {/* Discard pile and draw pile */}
       <View style={styles.pileContainer}>
         <View style={styles.pile}>
           <Text style={styles.pileLabel}>Draw Pile</Text>
-          <Text style={styles.pileCount}>{gameState.drawPile.length}</Text>
+          <Text style={styles.pileCount}>{drawPile.length}</Text>
           {canDraw && isCurrentTurn && (
             <TouchableOpacity
               style={styles.drawButton}
@@ -105,7 +186,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 onAddToMeld(selectedCards[0], meldId);
               }
             }}
-            selectedCard={selectedCards.length === 1 ? currentPlayer.hand.find(c => c.id === selectedCards[0]) || null : null}
+            selectedCard={selectedCards.length === 1 ? (currentPlayer.hand || []).find(c => c.id === selectedCards[0]) || null : null}
             showPlayerName={true}
           />
           {selectedCards.length === 1 && isCurrentTurn && (
@@ -120,7 +201,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       {currentPlayer && (
         <View style={styles.playerSection}>
           <PlayerHand
-            cards={currentPlayer.hand}
+            cards={currentPlayer.hand || []}
             onCardPress={onCardSelect}
             selectedCards={selectedCards}
             disabled={!isCurrentTurn}
@@ -250,6 +331,97 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
     marginTop: 5,
+  },
+  otherPlayerSection: {
+    marginBottom: 10,
+  },
+  playerInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: colors.backgroundDark,
+    borderRadius: 8,
+    marginBottom: 5,
+  },
+  playerInfoText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  currentTurnBadge: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: colors.primary,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  debugButton: {
+    backgroundColor: colors.info,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+  },
+  debugButtonText: {
+    color: colors.surface,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  debugContainer: {
+    backgroundColor: colors.backgroundDark,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: colors.info,
+  },
+  debugTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 10,
+  },
+  debugPlayerSection: {
+    marginRight: 15,
+    padding: 10,
+    backgroundColor: colors.surface,
+    borderRadius: 6,
+    minWidth: 200,
+  },
+  debugPlayerName: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 5,
+  },
+  debugCardCount: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  debugHand: {
+    maxHeight: 100,
+  },
+  otherPlayerHand: {
+    marginBottom: 10,
+    padding: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 6,
+  },
+  otherPlayerHandLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginBottom: 5,
+    fontStyle: 'italic',
+  },
+  otherPlayerHandContainer: {
+    flexDirection: 'row',
+    paddingVertical: 5,
   },
 });
 

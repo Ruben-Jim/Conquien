@@ -17,6 +17,7 @@ export function isValidSet(cards: Card[]): boolean {
 }
 
 // Check if cards form a valid sequence (3+ consecutive cards of same suit)
+// Conquian rules: Ace is low, 7 connects to Jack (10), no wrap-around (K-A-2 is invalid)
 export function isValidSequence(cards: Card[]): boolean {
   if (cards.length < 3) return false;
   
@@ -31,7 +32,12 @@ export function isValidSequence(cards: Card[]): boolean {
   for (let i = 1; i < sorted.length; i++) {
     const prevValue = getCardValue(sorted[i - 1].rank);
     const currValue = getCardValue(sorted[i].rank);
+    
+    // Check for consecutive values
     if (currValue !== prevValue + 1) return false;
+    
+    // Prevent wrap-around: K(12) cannot be followed by A(1)
+    if (prevValue === 12 && currValue === 1) return false;
   }
   
   return true;

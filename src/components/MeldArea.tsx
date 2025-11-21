@@ -12,6 +12,7 @@ interface MeldAreaProps {
   onMeldPress?: (meldId: string) => void;
   selectedCard?: CardType | null;
   showPlayerName?: boolean;
+  playerName?: string; // Optional player name to display
 }
 
 export const MeldArea: React.FC<MeldAreaProps> = ({
@@ -21,6 +22,7 @@ export const MeldArea: React.FC<MeldAreaProps> = ({
   onMeldPress,
   selectedCard,
   showPlayerName = false,
+  playerName,
 }) => {
   const playerMelds = melds.filter(m => m.playerId === playerId);
 
@@ -32,7 +34,7 @@ export const MeldArea: React.FC<MeldAreaProps> = ({
     <View style={styles.container}>
       {showPlayerName && (
         <Text style={styles.playerName}>
-          {playerMelds[0].playerId === playerId ? 'Your Melds' : `Player ${playerId.slice(-4)}'s Melds`}
+          {playerName || (playerMelds[0].playerId === playerId ? 'Your Melds' : `Player ${playerId.slice(-4)}'s Melds`)}
         </Text>
       )}
       {playerMelds.map((meld) => {

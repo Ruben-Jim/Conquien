@@ -14,14 +14,14 @@ interface PlayerHandProps {
 }
 
 export const PlayerHand: React.FC<PlayerHandProps> = ({
-  cards,
+  cards = [],
   onCardPress,
   selectedCards = [],
   disabled = false,
   showSortButton = true,
 }) => {
   const [sorted, setSorted] = useState(false);
-  const [displayCards, setDisplayCards] = useState(cards);
+  const [displayCards, setDisplayCards] = useState(cards || []);
 
   React.useEffect(() => {
     setDisplayCards(sorted ? sortCards(cards) : cards);

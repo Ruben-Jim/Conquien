@@ -6,15 +6,20 @@ import { Meld } from '../game/GameRules';
 export class GameService {
   // Create or get the main table game
   static async getOrCreateTable(): Promise<string> {
-    const gameId = 'main-table'; // Single table for all players
-    const existingGame = await FirebaseService.getGame(gameId);
-    
-    if (!existingGame) {
-      const gameState = GameStateManager.createGame(gameId);
-      await FirebaseService.createGame(gameId, gameState);
+    try {
+      const gameId = 'main-table'; // Single table for all players
+      const existingGame = await FirebaseService.getGame(gameId);
+      
+      if (!existingGame) {
+        const gameState = GameStateManager.createGame(gameId);
+        await FirebaseService.createGame(gameId, gameState);
+      }
+      
+      return gameId;
+    } catch (error: any) {
+      console.error('Error getting or creating table:', error);
+      throw new Error(`Failed to get or create table: ${error.message || 'Unknown error'}`);
     }
-    
-    return gameId;
   }
 
   // Join an existing game
@@ -117,6 +122,24 @@ export class GameService {
   // Get game state
   static async getGameState(gameId: string): Promise<GameState | null> {
     return await FirebaseService.getGame(gameId);
+  }
+
+  // Select card to exchange (cambio phase)
+  static async selectExchangeCard(gameId: string, playerId: string, cardId: string): Promise<void> {
+    const gameState = await FirebaseService.getGame(gameId);
+    if (!gameState) {
+      throw new Error('Game not found');
+    }
+
+    const updatedState = GameStateManager.selectExchangeCard(gameState, playerId, cardId);
+    await FirebaseService.updateGame(gameId, updatedState);
+
+    // Check if all players have selected, then complete exchange
+    const allSelected = updatedState.players.every(p => updatedState.exchangeCards?.[p.id]);
+    if (allSelected) {
+      const completedState = GameStateManager.completeExchange(updatedState);
+      await FirebaseService.updateGame(gameId, completedState);
+    }
   }
 
   // Subscribe to game state changes

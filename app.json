@@ -23,8 +23,13 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
+    "experiments": {
+      "typedRoutes": true,
+      "basePath": "/conquien"
+    },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "static"
     },
     "scheme": "conquien",
     "plugins": [

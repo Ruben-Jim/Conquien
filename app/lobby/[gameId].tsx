@@ -69,7 +69,8 @@ export default function LobbyScreen() {
   const currentPlayer = gameState.players.find(p => p.id === playerId);
   const seats = [0, 1, 2, 3];
   const readyCount = gameState.players.filter(p => p.ready).length;
-  const allReady = gameState.players.filter(p => p.seat !== null).length === 4 && 
+  const seatedCount = gameState.players.filter(p => p.seat !== null).length;
+  const allReady = seatedCount >= 2 && 
                    gameState.players.every(p => p.seat === null || p.ready);
 
   return (
@@ -77,7 +78,9 @@ export default function LobbyScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Conquian Table</Text>
         <Text style={styles.subtitle}>
-          {readyCount}/4 players ready
+          {seatedCount < 2 
+            ? `Need ${2 - seatedCount} more player${2 - seatedCount === 1 ? '' : 's'} to start`
+            : `${readyCount}/${seatedCount} players ready`}
         </Text>
       </View>
 
