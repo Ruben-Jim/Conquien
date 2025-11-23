@@ -18,10 +18,49 @@ export default function LobbyScreen() {
   const { gameState, loading } = useGameState(gameId || null);
 
   useEffect(() => {
-    if (gameState?.status === 'playing') {
+    // Redirect to game when it starts (either exchanging or playing phase)
+    if (gameState?.status === 'exchanging' || gameState?.status === 'playing') {
+      console.log('Lobby: Game started, redirecting to game screen. Status:', gameState.status);
       router.replace(`/game/${gameId}?playerId=${playerId}`);
     }
-  }, [gameState?.status, gameId, playerId]);
+  }, [gameState?.status, gameId, playerId, router]);
+
+  // Fallback: Check if game should start but hasn't (in case toggleReady missed it)
+  useEffect(() => {
+    if (!gameState || gameState.status !== 'waiting' || !gameId || loading) {
+      return;
+    }
+
+    const seatedCount = gameState.players.filter(p => p.seat !== null).length;
+    const allReady = seatedCount >= 2 && 
+                     gameState.players.every(p => p.seat === null || p.ready);
+
+    if (allReady) {
+      // Wait a bit to see if the game starts automatically (give toggleReady time to work)
+      const timeout = setTimeout(async () => {
+        // Re-check the state
+        const currentState = await GameService.getGameState(gameId);
+        if (currentState && currentState.status === 'waiting') {
+          const stillAllReady = currentState.players.filter(p => p.seat !== null).length >= 2 &&
+                                currentState.players.every(p => p.seat === null || p.ready);
+          if (stillAllReady) {
+            console.log('Lobby: Fallback - All players ready but game not started, attempting to start...');
+            try {
+              await GameService.startGame(gameId);
+            } catch (error: any) {
+              console.error('Lobby: Fallback start game error:', error);
+              // If error is that game already started, that's fine
+              if (!error.message?.includes('already started')) {
+                console.error('Unexpected error starting game:', error);
+              }
+            }
+          }
+        }
+      }, 2000); // Wait 2 seconds before checking (give toggleReady time)
+
+      return () => clearTimeout(timeout);
+    }
+  }, [gameState?.status, gameState?.players, gameId, loading]);
 
   const handleSelectSeat = async (seat: number) => {
     if (!gameId || !playerId) return;

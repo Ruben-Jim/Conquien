@@ -28,6 +28,7 @@ export function useGameState(gameId: string | null) {
 
     // Subscribe to real-time updates
     const unsubscribe = GameService.subscribeToGameState(gameId, (state) => {
+      console.log('Game state updated:', state?.status, 'players:', state?.players?.length);
       setGameState(state);
       setLoading(false);
     });

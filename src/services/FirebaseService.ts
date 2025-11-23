@@ -47,6 +47,16 @@ export class FirebaseService {
     await set(ref(database, `games/${gameId}`), cleanState);
   }
 
+  // Set full game state (used when starting game to ensure all fields are saved)
+  static async setGameState(gameId: string, gameState: GameState): Promise<void> {
+    // Clean up undefined fields before saving
+    const cleanState: any = { ...gameState };
+    if (cleanState.exchangeCards === undefined) {
+      delete cleanState.exchangeCards;
+    }
+    await set(ref(database, `games/${gameId}`), cleanState);
+  }
+
   // Get game state
   static async getGame(gameId: string): Promise<GameState | null> {
     const snapshot = await get(ref(database, `games/${gameId}`));

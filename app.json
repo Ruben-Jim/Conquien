@@ -25,7 +25,7 @@
     },
     "experiments": {
       "typedRoutes": true,
-      "basePath": "/conquien"
+      "basePath": "/Conquien"
     },
     "web": {
       "favicon": "./assets/favicon.png",

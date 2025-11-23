@@ -1,5 +1,5 @@
 {
-  "homepage": "https://Ruben-jim.github.io/Conquien",
+  "homepage": "https://ruben-jim.github.io/Conquien",
   "name": "conquien",
   "version": "1.0.0",
   "main": "index.ts",
@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "deploy": "gh-pages --nojekyll -d dist",
-    "predeploy": "expo export -p web"
+    "predeploy": "npx expo export --platform web"
   },
   "dependencies": {
     "babel-preset-expo": "~54.0.0",

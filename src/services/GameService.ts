@@ -45,13 +45,106 @@ export class GameService {
       throw new Error('Game not found');
     }
 
+    // Don't allow ready toggle if game already started
+    if (gameState.status !== 'waiting') {
+      throw new Error('Game has already started');
+    }
+
     const updatedState = GameStateManager.toggleReady(gameState, playerId);
     await FirebaseService.updateGame(gameId, updatedState);
 
-    // Auto-start if all 4 players are ready
-    if (GameStateManager.canStartGame(updatedState)) {
-      const startedState = GameStateManager.startGame(updatedState);
-      await FirebaseService.updateGame(gameId, startedState);
+    // Auto-start if enough players are ready
+    // Fetch latest state after update to get all concurrent updates from other players
+    // Retry more times with longer delays to handle Firebase propagation delays
+    let retries = 10;
+    let currentState: GameState | null = null;
+    
+    while (retries > 0) {
+      // Longer delay to allow Firebase to propagate updates
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      currentState = await FirebaseService.getGame(gameId);
+      if (!currentState) {
+        console.log('Game state not found during retry');
+        break;
+      }
+
+      // If game already started, we're done
+      if (currentState.status !== 'waiting') {
+        console.log('Game already started by another player, status:', currentState.status);
+        return;
+      }
+
+      // Check if all seated players are ready
+      const canStart = GameStateManager.canStartGame(currentState);
+      const seatedPlayers = currentState.players.filter(p => p.seat !== null);
+      const readyPlayers = seatedPlayers.filter(p => p.ready);
+      
+      console.log(`Retry check: ${readyPlayers.length}/${seatedPlayers.length} ready, canStart: ${canStart}`);
+      
+      if (canStart) {
+        console.log('All players ready, starting game...');
+        try {
+          // Double-check status hasn't changed (prevent race conditions)
+          const finalCheck = await FirebaseService.getGame(gameId);
+          if (!finalCheck) {
+            console.error('Game state disappeared during final check');
+            return;
+          }
+          
+          if (finalCheck.status !== 'waiting') {
+            console.log('Game already started during final check, status:', finalCheck.status);
+            return;
+          }
+          
+          if (!GameStateManager.canStartGame(finalCheck)) {
+            console.log('Game can no longer start (players changed)');
+            return;
+          }
+          
+          const startedState = GameStateManager.startGame(finalCheck);
+          console.log('Game started with status:', startedState.status);
+          console.log('Game state before save:', {
+            status: startedState.status,
+            players: startedState.players.length,
+            exchangeCards: startedState.exchangeCards,
+            drawPile: startedState.drawPile.length,
+          });
+          // Save the full game state - use set to ensure all fields are saved
+          await FirebaseService.setGameState(gameId, startedState);
+          console.log('Game state saved to Firebase successfully');
+          
+          // Verify the save worked
+          await new Promise(resolve => setTimeout(resolve, 100));
+          const verifyState = await FirebaseService.getGame(gameId);
+          if (verifyState && verifyState.status === 'exchanging') {
+            console.log('Game state verified, status is now:', verifyState.status);
+          } else {
+            console.error('Game state verification failed! Status:', verifyState?.status);
+          }
+          
+          return;
+        } catch (error: any) {
+          console.error('Error starting game:', error);
+          // Don't throw error here - the ready status was already updated successfully
+          // The game will start when another player toggles ready or when the state syncs
+          return;
+        }
+      }
+      
+      retries--;
+    }
+    
+    // If we exhausted retries and still can't start, log for debugging
+    if (currentState) {
+      const seatedPlayers = currentState.players.filter(p => p.seat !== null);
+      const readyPlayers = seatedPlayers.filter(p => p.ready);
+      console.log(`Retries exhausted. Not all players ready: ${readyPlayers.length}/${seatedPlayers.length} ready`);
+      console.log('Player states:', currentState.players.map(p => ({
+        id: p.id,
+        seat: p.seat,
+        ready: p.ready
+      })));
     }
   }
 
