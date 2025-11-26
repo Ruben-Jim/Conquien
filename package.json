@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "deploy": "gh-pages --nojekyll -d dist",
-    "predeploy": "npx expo export --platform web"
+    "predeploy": "npx expo export --platform web && node scripts/fix-paths.js",
+    "fix-paths": "node scripts/fix-paths.js"
   },
   "dependencies": {
     "babel-preset-expo": "~54.0.0",

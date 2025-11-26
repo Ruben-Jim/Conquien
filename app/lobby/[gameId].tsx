@@ -6,7 +6,9 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useGameState } from '../../src/hooks/useGameState';
 import { GameService } from '../../src/services/GameService';
@@ -14,6 +16,7 @@ import { colors } from '../../src/theme/colors';
 
 export default function LobbyScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { gameId, playerId } = useLocalSearchParams<{ gameId: string; playerId: string }>();
   const { gameState, loading } = useGameState(gameId || null);
 
@@ -113,7 +116,14 @@ export default function LobbyScreen() {
                    gameState.players.every(p => p.seat === null || p.ready);
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.contentContainer,
+        { paddingTop: Math.max(insets.top, 20), paddingBottom: insets.bottom + 20 }
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>Conquian Table</Text>
         <Text style={styles.subtitle}>
@@ -143,6 +153,7 @@ export default function LobbyScreen() {
                 }
               }}
               disabled={!isSeatAvailable && !isCurrentPlayerSeat}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Text style={styles.seatNumber}>Seat {seat + 1}</Text>
               {playerInSeat ? (
@@ -191,7 +202,7 @@ export default function LobbyScreen() {
           <Text style={styles.startingText}>Starting game...</Text>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -199,6 +210,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  contentContainer: {
     padding: 20,
   },
   header: {
@@ -279,6 +292,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 10,
     minWidth: 200,
+    minHeight: 44, // Minimum touch target for mobile
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   readyButtonActive: {
     backgroundColor: colors.success,
@@ -315,6 +331,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 20,
+    minHeight: 44, // Minimum touch target for mobile
+    justifyContent: 'center',
   },
   buttonText: {
     color: colors.surface,

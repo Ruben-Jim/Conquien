@@ -7,7 +7,11 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { GameService } from '../src/services/GameService';
 import { FirebaseService } from '../src/services/FirebaseService';
@@ -17,6 +21,7 @@ import { ref, get } from 'firebase/database';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [playerName, setPlayerName] = useState('');
   const [loading, setLoading] = useState(false);
   const [firebaseReady, setFirebaseReady] = useState(false);
@@ -74,38 +79,53 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Conquian</Text>
-        <Text style={styles.subtitle}>Spanish Card Game</Text>
-      </View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: Math.max(insets.top, 20), paddingBottom: insets.bottom + 20 }
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Conquian</Text>
+          <Text style={styles.subtitle}>Spanish Card Game</Text>
+        </View>
 
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your name"
-          placeholderTextColor={colors.textSecondary}
-          value={playerName}
-          onChangeText={setPlayerName}
-          autoCapitalize="words"
-        />
+        <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your name"
+            placeholderTextColor={colors.textSecondary}
+            value={playerName}
+            onChangeText={setPlayerName}
+            autoCapitalize="words"
+            returnKeyType="done"
+            onSubmitEditing={handleJoinTable}
+          />
 
-        <TouchableOpacity
-          style={[styles.button, styles.joinButton, loading && styles.buttonDisabled]}
-          onPress={() => {
-            console.log('Button pressed!');
-            handleJoinTable();
-          }}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.surface} />
-          ) : (
-            <Text style={styles.buttonText}>Join Table</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
+          <TouchableOpacity
+            style={[styles.button, styles.joinButton, loading && styles.buttonDisabled]}
+            onPress={() => {
+              console.log('Button pressed!');
+              handleJoinTable();
+            }}
+            disabled={loading}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : (
+              <Text style={styles.buttonText}>Join Table</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -113,6 +133,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
     padding: 20,
     justifyContent: 'center',
   },
@@ -149,6 +172,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 15,
+    minHeight: 44, // Minimum touch target for mobile
+    justifyContent: 'center',
   },
   joinButton: {
     backgroundColor: colors.primary,

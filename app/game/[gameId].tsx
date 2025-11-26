@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Text,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useGameState } from '../../src/hooks/useGameState';
 import { GameService } from '../../src/services/GameService';
@@ -17,6 +18,7 @@ import { Card } from '../../src/game/CardUtils';
 
 export default function GameScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { gameId, playerId } = useLocalSearchParams<{ gameId: string; playerId: string }>();
   const { gameState, loading } = useGameState(gameId || null);
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
@@ -158,7 +160,7 @@ export default function GameScreen() {
   // Show exchange phase if game is in exchanging status
   if (gameState.status === 'exchanging') {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <ExchangePhase
           gameState={gameState}
           currentPlayerId={playerId!}
@@ -169,7 +171,7 @@ export default function GameScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <GameBoard
         gameState={gameState}
         currentPlayerId={playerId!}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from './Card';
 import { PlayerHand } from './PlayerHand';
 import { MeldArea } from './MeldArea';
@@ -33,6 +34,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   canDraw,
   canDiscard,
 }) => {
+  const insets = useSafeAreaInsets();
   const [showDebugView, setShowDebugView] = useState(false);
   const currentPlayer = gameState.players.find(p => p.id === currentPlayerId);
   const isCurrentTurn = gameState.currentPlayerIndex === gameState.players.findIndex(p => p.id === currentPlayerId);
@@ -47,11 +49,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 10 }]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Debug toggle button */}
       <TouchableOpacity
         style={styles.debugButton}
         onPress={() => setShowDebugView(!showDebugView)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Text style={styles.debugButtonText}>
           {showDebugView ? 'Hide' : 'Show'} All Cards
@@ -180,7 +187,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           <MeldArea
             melds={gameState.melds}
             playerId={currentPlayerId}
-            onCardPress={(cardId, meldId) => onCardPress(cardId)}
+            onCardPress={(cardId, meldId) => onCardSelect(cardId)}
             onMeldPress={(meldId) => {
               if (selectedCards.length === 1) {
                 onAddToMeld(selectedCards[0], meldId);
@@ -240,15 +247,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           Current Turn: {gameState.players[gameState.currentPlayerIndex]?.name || 'Unknown'}
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
     backgroundColor: colors.background,
+  },
+  contentContainer: {
+    padding: 10,
   },
   pileContainer: {
     flexDirection: 'row',
@@ -278,9 +287,12 @@ const styles = StyleSheet.create({
   drawButton: {
     backgroundColor: colors.primary,
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 8,
     marginTop: 10,
+    minHeight: 44, // Minimum touch target for mobile
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonText: {
     color: colors.surface,
@@ -300,12 +312,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
+    minHeight: 44, // Minimum touch target for mobile
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   discardButton: {
     backgroundColor: colors.error,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
+    minHeight: 44, // Minimum touch target for mobile
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   waitingText: {
     textAlign: 'center',
@@ -362,10 +380,12 @@ const styles = StyleSheet.create({
   debugButton: {
     backgroundColor: colors.info,
     paddingHorizontal: 15,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 6,
     marginBottom: 10,
     alignSelf: 'flex-start',
+    minHeight: 44, // Minimum touch target for mobile
+    justifyContent: 'center',
   },
   debugButtonText: {
     color: colors.surface,

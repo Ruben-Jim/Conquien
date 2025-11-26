@@ -13,7 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.conquien.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +22,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.conquien.app"
     },
     "experiments": {
       "typedRoutes": true,
@@ -29,7 +31,10 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "output": "static"
+      "output": "static",
+      "bundler": "metro",
+      "viewport": "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
+      "themeColor": "#C41E3A"
     },
     "scheme": "conquien",
     "plugins": [

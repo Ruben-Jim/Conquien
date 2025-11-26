@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GameState } from '../game/GameState';
 import { Card } from './Card';
 import { PlayerHand } from './PlayerHand';
@@ -16,6 +17,7 @@ export const ExchangePhase: React.FC<ExchangePhaseProps> = ({
   currentPlayerId,
   onSelectCard,
 }) => {
+  const insets = useSafeAreaInsets();
   const currentPlayer = gameState.players.find(p => p.id === currentPlayerId);
   const exchangeCards = gameState.exchangeCards || {};
   const selectedCardId = exchangeCards[currentPlayerId];
@@ -33,7 +35,14 @@ export const ExchangePhase: React.FC<ExchangePhaseProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.contentContainer,
+        { paddingTop: Math.max(insets.top, 20), paddingBottom: insets.bottom + 20 }
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>The Exchange (Cambio)</Text>
         <Text style={styles.subtitle}>
@@ -63,6 +72,7 @@ export const ExchangePhase: React.FC<ExchangePhaseProps> = ({
                 key={card.id}
                 onPress={() => onSelectCard(card.id)}
                 activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <View style={[styles.cardWrapper, isSelected && styles.cardWrapperSelected]}>
                   <Card
@@ -90,15 +100,17 @@ export const ExchangePhase: React.FC<ExchangePhaseProps> = ({
           </Text>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: colors.background,
+  },
+  contentContainer: {
+    padding: 20,
   },
   header: {
     alignItems: 'center',

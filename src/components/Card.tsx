@@ -134,7 +134,11 @@ export const Card: React.FC<CardProps> = ({
 
   if (onPress && !disabled) {
     return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+      <TouchableOpacity 
+        onPress={onPress} 
+        activeOpacity={0.8}
+        hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+      >
         {Content}
       </TouchableOpacity>
     );

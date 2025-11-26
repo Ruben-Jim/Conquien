@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useGameState } from '../../src/hooks/useGameState';
 import { colors } from '../../src/theme/colors';
 
 export default function WinScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { gameId, playerId } = useLocalSearchParams<{ gameId: string; playerId: string }>();
   const { gameState, loading } = useGameState(gameId || null);
 
@@ -21,7 +23,14 @@ export default function WinScreen() {
   const isWinner = gameState.winnerId === playerId;
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.contentContainer,
+        { paddingTop: Math.max(insets.top, 20), paddingBottom: insets.bottom + 20 }
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.content}>
         {isWinner ? (
           <>
@@ -40,11 +49,12 @@ export default function WinScreen() {
         <TouchableOpacity
           style={styles.button}
           onPress={() => router.push('/')}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text style={styles.buttonText}>Back to Home</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -52,6 +62,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  contentContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -88,6 +101,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 10,
+    minHeight: 44, // Minimum touch target for mobile
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonText: {
     color: colors.surface,
