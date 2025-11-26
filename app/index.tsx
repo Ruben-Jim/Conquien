@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   Alert,
   ActivityIndicator,
@@ -45,12 +45,21 @@ export default function HomeScreen() {
   }, []);
 
   const handleJoinTable = async () => {
+    console.log('handleJoinTable called');
+    
     if (!playerName.trim()) {
       Alert.alert('Error', 'Please enter your name');
       return;
     }
 
+    if (loading) {
+      console.log('Already loading, ignoring press');
+      return;
+    }
+
+    console.log('Setting loading to true');
     setLoading(true);
+    
     try {
       console.log('Starting join table process...');
       const playerId = FirebaseService.generatePlayerId();
@@ -62,7 +71,7 @@ export default function HomeScreen() {
       await GameService.joinGame(gameId, playerId, playerName.trim());
       console.log('Joined game successfully');
       
-      const lobbyPath = `/lobby/${gameId}?playerId=${playerId}`;
+      const lobbyPath = `/lobby/${gameId}?playerId=${playerId}` as any;
       console.log('Navigating to lobby:', lobbyPath);
       
       // Small delay to ensure state is updated
@@ -81,8 +90,9 @@ export default function HomeScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      enabled={Platform.OS === 'ios'}
     >
       <ScrollView
         contentContainerStyle={[
@@ -90,6 +100,10 @@ export default function HomeScreen() {
           { paddingTop: Math.max(insets.top, 20), paddingBottom: insets.bottom + 20 }
         ]}
         keyboardShouldPersistTaps="handled"
+        scrollEnabled={true}
+        bounces={false}
+        nestedScrollEnabled={true}
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
           <Text style={styles.title}>Conquian</Text>
@@ -106,23 +120,34 @@ export default function HomeScreen() {
             autoCapitalize="words"
             returnKeyType="done"
             onSubmitEditing={handleJoinTable}
+            autoCorrect={false}
+            autoComplete="name"
+            textContentType="name"
+            clearButtonMode="while-editing"
+            enablesReturnKeyAutomatically={true}
           />
 
-          <TouchableOpacity
-            style={[styles.button, styles.joinButton, loading && styles.buttonDisabled]}
-            onPress={() => {
-              console.log('Button pressed!');
-              handleJoinTable();
-            }}
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              styles.joinButton,
+              loading && styles.buttonDisabled,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleJoinTable}
             disabled={loading}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            accessible={true}
+            accessibilityLabel="Join Table"
+            accessibilityRole="button"
+            android_ripple={{ color: 'rgba(255, 255, 255, 0.2)' }}
           >
             {loading ? (
-              <ActivityIndicator color={colors.surface} />
+              <ActivityIndicator color={colors.surface} size="small" />
             ) : (
               <Text style={styles.buttonText}>Join Table</Text>
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -148,11 +173,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
     marginBottom: 10,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 18,
     color: colors.textSecondary,
     fontStyle: 'italic',
+    textAlign: 'center',
   },
   form: {
     width: '100%',
@@ -166,17 +193,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     marginBottom: 15,
+    minHeight: 44, // Minimum touch target for mobile
+    textAlignVertical: 'center',
+    // Better mobile input styling
+    includeFontPadding: false,
   },
   button: {
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 15,
-    minHeight: 44, // Minimum touch target for mobile
+    minHeight: 56, // Increased minimum touch target for mobile (56px is better for mobile)
+    minWidth: '100%',
     justifyContent: 'center',
+    // Ensure button is above other elements
+    elevation: 3, // Android shadow
+    shadowColor: '#000', // iOS shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    zIndex: 10, // Ensure button is on top
   },
   joinButton: {
     backgroundColor: colors.primary,
+  },
+  buttonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -185,6 +228,8 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontSize: 18,
     fontWeight: 'bold',
+    // Ensure text doesn't block touches
+    pointerEvents: 'none',
   },
 });
 

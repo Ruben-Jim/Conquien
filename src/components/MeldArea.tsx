@@ -50,6 +50,10 @@ export const MeldArea: React.FC<MeldAreaProps> = ({
             ]}
             onPress={canAddSelected ? () => onMeldPress?.(meld.id) : undefined}
             disabled={!canAddSelected}
+            {...(canAddSelected && onMeldPress ? {
+              hitSlop: { top: 10, bottom: 10, left: 10, right: 10 },
+              activeOpacity: 0.7
+            } : {})}
           >
             <Text style={styles.meldType}>
               {meld.type === 'set' ? 'Set' : 'Sequence'} ({meld.cards.length} cards)

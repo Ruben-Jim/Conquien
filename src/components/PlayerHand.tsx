@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Card } from './Card';
 import { Card as CardType } from '../game/CardUtils';
 import { sortCards } from '../game/CardUtils';
@@ -37,9 +37,15 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
       {showSortButton && (
         <View style={styles.header}>
           <Text style={styles.label}>Your Hand ({cards.length} cards)</Text>
-          <Text style={styles.sortButton} onPress={handleSort}>
-            {sorted ? 'Unsort' : 'Sort'}
-          </Text>
+          <TouchableOpacity
+            onPress={handleSort}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.sortButton}>
+              {sorted ? 'Unsort' : 'Sort'}
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
       <ScrollView
@@ -83,6 +89,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     fontWeight: '600',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    minHeight: 44, // Minimum touch target for mobile
+    textAlignVertical: 'center',
   },
   handContainer: {
     flexDirection: 'row',
